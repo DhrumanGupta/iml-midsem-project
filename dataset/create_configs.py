@@ -5,11 +5,10 @@ from pathlib import Path
 
 lockdown_days_config = [[], [20], [40], [60], [20, 60], [20, 70], [40, 70]]
 
-lockdown_durations = [14, 21]
+lockdown_durations = [21]
 strengths = [0.7, 0.9]
 
 beta_gamma_config = [
-    (0.25, 1 / 7),
     (0.3, 1 / 7),
     (0.3, 1 / 14),
     (0.35, 1 / 14),
