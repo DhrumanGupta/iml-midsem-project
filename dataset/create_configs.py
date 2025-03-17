@@ -1,5 +1,4 @@
 import itertools
-import os
 import toml
 from pathlib import Path
 
