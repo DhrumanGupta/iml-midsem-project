@@ -5,7 +5,7 @@ import pandas as pd
 import toml
 from loguru import logger
 import matplotlib.pyplot as plt
-from concurrent.futures import ThreadPoolExecutor
+import shutil
 
 POPULATION_SIZE = 100_000
 
@@ -31,11 +31,25 @@ def process_config(name: str):
 
     if not os.path.exists(raw_data_dir):
         # Optionally, log an error here
+        logger.error(f"Raw data directory {raw_data_dir} does not exist")
         return
 
     # Read CSV files using a list comprehension
     csv_files = [os.path.join(raw_data_dir, f) for f in os.listdir(raw_data_dir)]
-    dfs = [pd.read_csv(f).drop(columns=["Day"]) for f in csv_files]
+
+    dfs = []
+
+    for f in csv_files:
+        try:
+            df = pd.read_csv(f).drop(columns=["Day"])
+            dfs.append(df)
+
+            if len(df) != 151:
+                logger.error(f"Invalid number of days in {f}")
+                exit()
+        except Exception as e:
+            logger.error(f"Error reading {f}: {e}")
+            exit()
 
     # Compute average of each cell from the list of DataFrames
     avg_values = np.mean([df.values for df in dfs], axis=0)
