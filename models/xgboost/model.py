@@ -22,11 +22,13 @@ IS_PYTORCH = False
 
 class Model:
     def __init__(self, input_size, is_deltas):
+        self.is_deltas = is_deltas
+
         self.model = XGBRegressor(
-            n_estimators=100,  # Reduced from 10000 to prevent overfitting
-            learning_rate=0.2,  # Slower learning rate for better generalization
+            n_estimators=1000,  # Reduced from 10000 to prevent overfitting
+            learning_rate=0.15,  # Slower learning rate for better generalization
             subsample=0.8,  # Use 80% of data per tree to prevent overfitting
-            gamma=0.01,  # Minimum loss reduction for split
+            # gamma=0.01,  # Minimum loss reduction for split
             # reg_alpha=0.005,  # L1 regularization
             # reg_lambda=1,  # L2 regularization
             # min_child_weight=1,  # Minimum sum of instance weight in a child
@@ -80,6 +82,24 @@ def train_model(model, train_data, val_data, num_epochs):
     yield train_loss, val_loss, 0
 
 
+def normalize_predictions(predictions, is_deltas=False):
+    # Split predictions into students and adults
+    students = predictions[:, :3]
+    adults = predictions[:, 3:]
+
+    if is_deltas:
+        # For deltas, ensure each group sums to 0
+        students = students - (students.sum(axis=1, keepdims=True) / 3)
+        adults = adults - (adults.sum(axis=1, keepdims=True) / 3)
+    else:
+        # For absolute values, normalize to sum to 1
+        students = students / students.sum(axis=1, keepdims=True)
+        adults = adults / adults.sum(axis=1, keepdims=True)
+
+    # Concatenate back together
+    return np.concatenate([students, adults], axis=1)
+
+
 def predict(model, x_sir, x_interventions, x_static) -> np.ndarray:
     if not model.is_fitted:
         raise RuntimeError("Model must be trained before prediction")
@@ -90,8 +110,13 @@ def predict(model, x_sir, x_interventions, x_static) -> np.ndarray:
     # Get predictions for both groups
     pred = model.model.predict(X)
 
+    if len(pred.shape) == 1:
+        pred = pred.reshape(1, -1)
+
+    normalized_pred = normalize_predictions(pred, model.is_deltas)
+
     # Combine predictions
-    return pred
+    return normalized_pred
 
 
 def save_model(model, path):

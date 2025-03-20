@@ -1,1 +1,2 @@
 raw_data.xz filter=lfs diff=lfs merge=lfs -text
+raw_data.tar.zst filter=lfs diff=lfs merge=lfs -text

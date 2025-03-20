@@ -6,18 +6,38 @@ import pandas as pd
 from dataset.data_loader import load_data
 from dataset.dataset import FEATURE_SIZE, SimulationDataset
 from logger import logger
-from models import mlp, xgboost
+import importlib
 
 TRAIN_MODEL = True
-IS_DELTAS = True
-MODEL_TO_LOAD = "model_1.pth"
-EPOCHS = 50
+IS_DELTAS = False
+MODEL_TO_LOAD = "model_3.pth"
+EPOCHS = 5
 
 
-models_dict = {
-    "mlp": mlp,
-    "xgboost": xgboost,
-}
+models_dict = {}
+for item in os.listdir(os.path.dirname(__file__)):
+    model_dir = os.path.join(os.path.dirname(__file__), item)
+    init_file = os.path.join(model_dir, "__init__.py")
+
+    # Check if it's a directory with an __init__.py file (a proper module)
+    if os.path.isdir(model_dir) and os.path.isfile(init_file) and item != "__pycache__":
+        try:
+            # Import the module dynamically
+            model_module = importlib.import_module(f"models.{item}")
+            # Check if it has the required attributes
+            required_attrs = [
+                "Model",
+                "IS_PYTORCH",
+                "save_model",
+                "load_model",
+                "train_model",
+                "predict",
+            ]
+            if all(hasattr(model_module, attr) for attr in required_attrs):
+                models_dict[item] = model_module
+                # print(f"Discovered model: {item}")
+        except (ImportError, AttributeError) as e:
+            print(f"Skipping {item}: {e}")
 
 
 def plot_for_model(model, model_instance):
@@ -88,16 +108,16 @@ def plot_for_model(model, model_instance):
         plt.figure(figsize=(10, 10))
 
         plt.subplot(2, 1, 1)
-        # plt.plot(
-        #     sir_array[:, 0], label="Susceptible - Predicted", color="blue", alpha=0.5
-        # )
-        # plt.plot(
-        #     test_df["S_Students"],
-        #     label="Susceptible - Real",
-        #     color="blue",
-        #     alpha=0.5,
-        #     linestyle="--",
-        # )
+        plt.plot(
+            sir_array[:, 0], label="Susceptible - Predicted", color="blue", alpha=0.5
+        )
+        plt.plot(
+            test_df["S_Students"],
+            label="Susceptible - Real",
+            color="blue",
+            alpha=0.5,
+            linestyle="--",
+        )
 
         plt.plot(
             sir_array[:, 1],
@@ -113,16 +133,16 @@ def plot_for_model(model, model_instance):
             alpha=0.5,
         )
 
-        # plt.plot(
-        #     sir_array[:, 2], label="Recovered - Predicted", color="green", alpha=0.5
-        # )
-        # plt.plot(
-        #     test_df["R_Students"],
-        #     label="Recovered - Real",
-        #     color="darkgreen",
-        #     alpha=0.5,
-        #     linestyle="--",
-        # )
+        plt.plot(
+            sir_array[:, 2], label="Recovered - Predicted", color="green", alpha=0.5
+        )
+        plt.plot(
+            test_df["R_Students"],
+            label="Recovered - Real",
+            color="darkgreen",
+            alpha=0.5,
+            linestyle="--",
+        )
 
         plt.title("Student Population SIR Model")
         plt.xlabel("Time Steps")
@@ -132,16 +152,16 @@ def plot_for_model(model, model_instance):
 
         # Plot adult ratios
         plt.subplot(2, 1, 2)
-        # plt.plot(
-        #     sir_array[:, 3], label="Susceptible - Predicted", color="blue", alpha=0.5
-        # )
-        # plt.plot(
-        #     test_df["S_Adults"],
-        #     label="Susceptible - Real",
-        #     color="blue",
-        #     alpha=0.5,
-        #     linestyle="--",
-        # )
+        plt.plot(
+            sir_array[:, 3], label="Susceptible - Predicted", color="blue", alpha=0.5
+        )
+        plt.plot(
+            test_df["S_Adults"],
+            label="Susceptible - Real",
+            color="blue",
+            alpha=0.5,
+            linestyle="--",
+        )
 
         plt.plot(
             sir_array[:, 4],
@@ -157,16 +177,16 @@ def plot_for_model(model, model_instance):
             alpha=0.5,
         )
 
-        # plt.plot(
-        #     sir_array[:, 5], label="Recovered - Predicted", color="green", alpha=0.5
-        # )
-        # plt.plot(
-        #     test_df["R_Adults"],
-        #     label="Recovered - Real",
-        #     color="green",
-        #     alpha=0.5,
-        #     linestyle="--",
-        # )
+        plt.plot(
+            sir_array[:, 5], label="Recovered - Predicted", color="green", alpha=0.5
+        )
+        plt.plot(
+            test_df["R_Adults"],
+            label="Recovered - Real",
+            color="green",
+            alpha=0.5,
+            linestyle="--",
+        )
 
         plt.title("Adult Population SIR Model")
         plt.xlabel("Time Steps")
@@ -175,14 +195,15 @@ def plot_for_model(model, model_instance):
         plt.tight_layout()
         plt.grid(True)
 
-        os.makedirs("plots", exist_ok=True)
         # Get next index which is not taken
         idx = 0
-        postfix = "_deltas" if IS_DELTAS else "_absolute"
-        while os.path.exists(f"plots/plot_{idx}_{type}{postfix}.png"):
+        postfix = "deltas" if IS_DELTAS else "absolute"
+        directory = f"plots/{model_name}/{postfix}"
+        os.makedirs(directory, exist_ok=True)
+        while os.path.exists(f"{directory}/plot_{idx}_{type}.png"):
             idx += 1
 
-        plt.savefig(f"plots/plot_{idx}_{type}{postfix}.png")
+        plt.savefig(f"{directory}/plot_{idx}_{type}.png")
 
         plt.cla()
         plt.clf()
@@ -254,7 +275,7 @@ def evaluate_model(model, model_instance):
         # Update the current states.
         current_sirs = outputs
 
-    return total_loss
+    return total_loss / (150 * len(data_loaders) * 6)
 
 
 def main(model_name):
