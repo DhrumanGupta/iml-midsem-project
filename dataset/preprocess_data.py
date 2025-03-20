@@ -3,21 +3,10 @@ import sys
 import numpy as np
 import pandas as pd
 import toml
-from loguru import logger
 import matplotlib.pyplot as plt
 import shutil
 
-POPULATION_SIZE = 100_000
-
-
-logger.remove()  # Remove default handler
-logger.add(
-    sink=sys.stderr,
-    format="<green>{time:HH:mm:ss.SSS}</green> | "
-    "<level>{level: <8}</level> | "
-    "<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-    colorize=True,
-)
+from logger import logger
 
 
 def process_config(name: str):
@@ -79,34 +68,47 @@ def process_config(name: str):
         )
     )
 
-    # Precompute lockdown intensities for each day
+    # Precompute lockdown intensities for each day, shifted by 1 day forward
     n_days = len(avg_df)
     school_intensity = np.zeros(n_days)
     office_intensity = np.zeros(n_days)
 
-    # Assign intensities; assumes intervals are nonoverlapping
+    # Assign intensities shifted by 1 day; assumes intervals are nonoverlapping
     for day, duration, intensity in school_lockdowns:
-        start, end = day, min(day + duration, n_days)
+        start, end = day - 1, min(day + duration - 1, n_days)  # Shift by -1 day
         school_intensity[start:end] = intensity
     for day, duration, intensity in office_lockdowns:
-        start, end = day, min(day + duration, n_days)
+        start, end = day - 1, min(day + duration - 1, n_days)  # Shift by -1 day
         office_intensity[start:end] = intensity
 
-    # Build the processed dataframe using vectorized operations
+    # Calculate total population sizes for students and adults
+    student_size = (
+        pd.to_numeric(avg_df["Students - Susceptible - Mumbai"])
+        + pd.to_numeric(avg_df["Students - Infected - Mumbai"])
+        + pd.to_numeric(avg_df["Students - Recovered - Mumbai"])
+    )
+
+    adult_size = (
+        pd.to_numeric(avg_df["Adults - Susceptible - Mumbai"])
+        + pd.to_numeric(avg_df["Adults - Infected - Mumbai"])
+        + pd.to_numeric(avg_df["Adults - Recovered - Mumbai"])
+    )
+
+    # Create the base dataframe without the last row
     processed_df = pd.DataFrame(
         {
             "S_Students": pd.to_numeric(avg_df["Students - Susceptible - Mumbai"])
-            / POPULATION_SIZE,
+            / student_size,
             "I_Students": pd.to_numeric(avg_df["Students - Infected - Mumbai"])
-            / POPULATION_SIZE,
+            / student_size,
             "R_Students": pd.to_numeric(avg_df["Students - Recovered - Mumbai"])
-            / POPULATION_SIZE,
+            / student_size,
             "S_Adults": pd.to_numeric(avg_df["Adults - Susceptible - Mumbai"])
-            / POPULATION_SIZE,
+            / adult_size,
             "I_Adults": pd.to_numeric(avg_df["Adults - Infected - Mumbai"])
-            / POPULATION_SIZE,
+            / adult_size,
             "R_Adults": pd.to_numeric(avg_df["Adults - Recovered - Mumbai"])
-            / POPULATION_SIZE,
+            / adult_size,
             "Adult_Ratio": adult_ratio,
             "Student_Ratio": student_ratio,
             "Home_Size": home_size,
@@ -116,8 +118,36 @@ def process_config(name: str):
             "Gamma": float(config["GAMMA"]),
             "School_Lockdown_Intensity": school_intensity,
             "Office_Lockdown_Intensity": office_intensity,
+            # Update labels to use the same normalization
+            "Label_S_Students": pd.to_numeric(
+                avg_df["Students - Susceptible - Mumbai"]
+            ).shift(-1)
+            / student_size,
+            "Label_I_Students": pd.to_numeric(
+                avg_df["Students - Infected - Mumbai"]
+            ).shift(-1)
+            / student_size,
+            "Label_R_Students": pd.to_numeric(
+                avg_df["Students - Recovered - Mumbai"]
+            ).shift(-1)
+            / student_size,
+            "Label_S_Adults": pd.to_numeric(
+                avg_df["Adults - Susceptible - Mumbai"]
+            ).shift(-1)
+            / adult_size,
+            "Label_I_Adults": pd.to_numeric(avg_df["Adults - Infected - Mumbai"]).shift(
+                -1
+            )
+            / adult_size,
+            "Label_R_Adults": pd.to_numeric(
+                avg_df["Adults - Recovered - Mumbai"]
+            ).shift(-1)
+            / adult_size,
         }
     )
+
+    # Drop the last row since it won't have labels
+    processed_df = processed_df.dropna()
 
     processed_df.to_csv(output_path, index=False)
 
