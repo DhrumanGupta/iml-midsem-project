@@ -21,6 +21,8 @@ FEATURE_COLS_STATIC = [
     "Home_Size",
     "School_Size",
     "Work_Size",
+    "Beta",
+    "Gamma",
 ]
 
 LABEL_COLS = [

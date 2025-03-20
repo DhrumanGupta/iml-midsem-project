@@ -10,8 +10,9 @@ import importlib
 
 TRAIN_MODEL = True
 IS_DELTAS = False
-MODEL_TO_LOAD = "model_3.pth"
+MODEL_TO_LOAD = "model_5.pth"
 EPOCHS = 50
+AUTOREGRESSIVE = True
 
 
 models_dict = {}
@@ -109,14 +110,17 @@ def plot_for_model(model, model_instance):
 
         plt.subplot(2, 1, 1)
         plt.plot(
-            sir_array[:, 0], label="Susceptible - Predicted", color="blue", alpha=0.5
+            sir_array[:, 0],
+            label="Susceptible - Predicted",
+            color="blue",
+            alpha=0.5,
+            linestyle="--",
         )
         plt.plot(
             test_df["S_Students"],
             label="Susceptible - Real",
             color="blue",
             alpha=0.5,
-            linestyle="--",
         )
 
         plt.plot(
@@ -134,14 +138,17 @@ def plot_for_model(model, model_instance):
         )
 
         plt.plot(
-            sir_array[:, 2], label="Recovered - Predicted", color="green", alpha=0.5
+            sir_array[:, 2],
+            label="Recovered - Predicted",
+            color="green",
+            alpha=0.5,
+            linestyle="--",
         )
         plt.plot(
             test_df["R_Students"],
             label="Recovered - Real",
             color="darkgreen",
             alpha=0.5,
-            linestyle="--",
         )
 
         plt.title("Student Population SIR Model")
@@ -153,14 +160,17 @@ def plot_for_model(model, model_instance):
         # Plot adult ratios
         plt.subplot(2, 1, 2)
         plt.plot(
-            sir_array[:, 3], label="Susceptible - Predicted", color="blue", alpha=0.5
+            sir_array[:, 3],
+            label="Susceptible - Predicted",
+            color="blue",
+            alpha=0.5,
+            linestyle="--",
         )
         plt.plot(
             test_df["S_Adults"],
             label="Susceptible - Real",
             color="blue",
             alpha=0.5,
-            linestyle="--",
         )
 
         plt.plot(
@@ -178,14 +188,17 @@ def plot_for_model(model, model_instance):
         )
 
         plt.plot(
-            sir_array[:, 5], label="Recovered - Predicted", color="green", alpha=0.5
+            sir_array[:, 5],
+            label="Recovered - Predicted",
+            color="green",
+            alpha=0.5,
+            linestyle="--",
         )
         plt.plot(
             test_df["R_Adults"],
             label="Recovered - Real",
             color="green",
             alpha=0.5,
-            linestyle="--",
         )
 
         plt.title("Adult Population SIR Model")
@@ -282,10 +295,10 @@ def main(model_name):
     model = models_dict[model_name]
 
     train_loader, val_loader, test_loader = load_data(
-        batch_size=512,
+        batch_size=256,
         pytorch=model.IS_PYTORCH,
         is_deltas=IS_DELTAS,
-        sequence_length=150,
+        sequence_length=150 if AUTOREGRESSIVE else 1,
     )
 
     model_instance = model.Model(input_size=FEATURE_SIZE, is_deltas=IS_DELTAS)

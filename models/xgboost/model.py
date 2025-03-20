@@ -25,7 +25,7 @@ class Model:
         self.is_deltas = is_deltas
 
         self.model = XGBRegressor(
-            n_estimators=1000,  # Reduced from 10000 to prevent overfitting
+            n_estimators=100,  # Reduced from 10000 to prevent overfitting
             learning_rate=0.15,  # Slower learning rate for better generalization
             subsample=0.8,  # Use 80% of data per tree to prevent overfitting
             # gamma=0.01,  # Minimum loss reduction for split
