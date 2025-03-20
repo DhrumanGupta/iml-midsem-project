@@ -13,6 +13,7 @@ IS_DELTAS = False
 MODEL_TO_LOAD = "model_5.pth"
 EPOCHS = 50
 AUTOREGRESSIVE = True
+BATCH_SIZE = 256
 
 
 models_dict = {}
@@ -295,7 +296,7 @@ def main(model_name):
     model = models_dict[model_name]
 
     train_loader, val_loader, test_loader = load_data(
-        batch_size=256,
+        batch_size=BATCH_SIZE,
         pytorch=model.IS_PYTORCH,
         is_deltas=IS_DELTAS,
         sequence_length=150 if AUTOREGRESSIVE else 1,

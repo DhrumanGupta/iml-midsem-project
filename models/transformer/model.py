@@ -69,7 +69,7 @@ class Model(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(hidden_size, 256),
             nn.ReLU(),
-            nn.BatchNorm1d(256),
+            nn.LayerNorm(256),
             nn.Linear(256, 6),
         )
 
@@ -84,13 +84,6 @@ class Model(nn.Module):
               If True and in sequence mode, return the predictions at every time step.
               Otherwise, return only the final prediction.
         """
-        print("x_sir")
-        print(x_sir.shape)
-        print("x_interventions")
-        print(x_interventions.shape)
-        print("x_static")
-        print(x_static.shape)
-        exit()
         if x_sir.dim() == 2:
             # Pointwise mode: combine features and add sequence dimension of 1.
             x = torch.cat((x_sir, x_interventions, x_static), dim=1).to(device)

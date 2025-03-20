@@ -52,23 +52,6 @@ def train_model(model, train_data, val_data, num_epochs):
 
     y_train = train_data[LABEL_COLS].values
 
-    # column_mapping = {}
-
-    # for col in LABEL_COLS:
-    #     column_mapping[col] = col.split("Label_")[1]
-
-    # y_train = y_train.rename(columns=column_mapping)
-    # y_train = (y_train - train_data[FEATURE_COLS_SIR]).values
-
-    # print()
-    # print(y_train - train_data[FEATURE_COLS_SIR])
-
-    # exit()
-
-    # Split targets for students and adults
-    # y_train_students = y_train[:, :3]
-    # y_train_adults = y_train[:, 3:]
-
     # Train models
     model.model.fit(X_train, y_train)
     model.is_fitted = True
