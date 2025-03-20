@@ -11,7 +11,7 @@ import importlib
 TRAIN_MODEL = True
 IS_DELTAS = False
 MODEL_TO_LOAD = "model_3.pth"
-EPOCHS = 5
+EPOCHS = 50
 
 
 models_dict = {}

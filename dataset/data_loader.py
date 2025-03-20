@@ -10,7 +10,7 @@ from dataset.dataset import FEATURE_COLS_SIR, LABEL_COLS, SimulationDataset
 def load_data(
     batch_size: int = 32,
     pytorch: bool = True,
-    seed: int = 1234,
+    seed: int = 123456,
     is_deltas: bool = False,
     sequence_length: int = 1,
 ) -> tuple:

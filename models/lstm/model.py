@@ -14,7 +14,7 @@ class Model(nn.Module):
         input_size,
         is_deltas,
         hidden_size=128,
-        num_layers=2,
+        num_layers=8,
         dropout=0.2,
     ):
         super(Model, self).__init__()
