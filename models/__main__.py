@@ -285,6 +285,7 @@ def main(model_name):
         batch_size=512,
         pytorch=model.IS_PYTORCH,
         is_deltas=IS_DELTAS,
+        sequence_length=150,
     )
 
     model_instance = model.Model(input_size=FEATURE_SIZE, is_deltas=IS_DELTAS)
