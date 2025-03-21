@@ -26,14 +26,14 @@ AUTOREGRESSIVE = False
 # Hyperparameter search space for grid search
 SEARCH_SPACE = {
     "n_estimators": tune.grid_search([50, 100, 300, 500]),
-    "learning_rate": tune.grid_search([0.01, 0.1, 0.3]),
-    "subsample": tune.grid_search([0.5, 0.75, 1.0]),
-    "colsample_bytree": tune.grid_search([0.5, 0.75, 1.0]),
-    "gamma": tune.grid_search([0.001, 0.01, 0.1]),
-    "reg_alpha": tune.grid_search([0.001, 0.01, 0.1]),
-    "reg_lambda": tune.grid_search([0.001, 0.01, 0.1, 1.0]),
-    "max_depth": tune.grid_search([3, 5, 7, 9, 11]),
-    "min_child_weight": tune.grid_search([1, 3, 5, 7]),
+    # "learning_rate": tune.grid_search([0.01, 0.1, 0.3]),
+    # "subsample": tune.grid_search([0.5, 0.75, 1.0]),
+    # "colsample_bytree": tune.grid_search([0.5, 0.75, 1.0]),
+    # "gamma": tune.grid_search([0.001, 0.01, 0.1]),
+    # "reg_alpha": tune.grid_search([0.001, 0.01, 0.1]),
+    # "reg_lambda": tune.grid_search([0.001, 0.01, 0.1, 1.0]),
+    # "max_depth": tune.grid_search([3, 5, 7, 9, 11]),
+    # "min_child_weight": tune.grid_search([1, 3, 5, 7]),
 }
 
 
@@ -205,6 +205,7 @@ def grid_search(
     is_deltas,
     loss_fn,
     max_concurrent_trials=8,
+    top_n=10,  # Number of top models to return
 ):
     """
     Perform hyperparameter optimization using Ray Tune.
@@ -213,13 +214,13 @@ def grid_search(
         train_data: Training data DataFrame
         val_data: Validation data DataFrame
         is_deltas: Whether the model predicts deltas or absolute values
-        num_samples: Number of hyperparameter combinations to try
+        loss_fn: Function to evaluate model performance
         max_concurrent_trials: Maximum number of trials to run in parallel
-        search_dir: Directory to store Ray Tune results
+        top_n: Number of top models to return (default: 10)
 
     Returns:
-        best_config: Dictionary with the best hyperparameters found
-        best_model: Trained model with the best hyperparameters
+        sorted_models: List of dictionaries containing models and their configs,
+                       sorted from best to worst performance
     """
     # Set up the trainable function with parameters
     trainable_func = tune.with_parameters(
@@ -232,7 +233,7 @@ def grid_search(
 
     # Configure the tuner
     tuner = tune.Tuner(
-        tune.with_resources(trainable_func, {"cpu": 1}),  # Adjust resources as needed
+        tune.with_resources(trainable_func, {"cpu": 1}),
         tune_config=tune.TuneConfig(
             metric="val_loss",
             mode="min",
@@ -244,32 +245,43 @@ def grid_search(
     # Execute the optimization
     results = tuner.fit()
 
-    # Get the best configuration and results
-    best_result = results.get_best_result("val_loss", "min")
-    best_config = best_result.config
+    # Get the top N configurations and results
+    top_results = results.get_dataframe().sort_values("val_loss").head(top_n)
+    columns = [f"config/{key}" for key in SEARCH_SPACE.keys()]
+    top_configs = [dict(row) for _, row in top_results[columns].iterrows()]
+    val_losses = top_results["val_loss"].tolist()
 
-    print("Best hyperparameters found:")
-    for param, value in best_config.items():
-        print(f"  {param}: {value}")
+    print(f"Top {top_n} hyperparameter configurations found:")
+    for i, (config, val_loss) in enumerate(zip(top_configs, val_losses)):
+        print(f"\nRank {i+1} (val_loss: {val_loss:.6f}):")
+        for param, value in config.items():
+            print(f"  {param}: {value}")
 
-    # Train a model with the best configuration
-    best_model = Model(
-        input_size=train_data[FEATURE_COLS_SIR].shape[1],
-        is_deltas=is_deltas,
-        config=best_config,
-    )
+    # Create a list to store models with their configs
+    sorted_models = []
 
-    X_train = np.concatenate(
-        [
-            train_data[FEATURE_COLS_SIR].values,
-            train_data[FEATURE_COLS_INTERVENTIONS].values,
-            train_data[FEATURE_COLS_STATIC].values,
-        ],
-        axis=1,
-    )
-    y_train = train_data[LABEL_COLS].values
+    # Train models with the top configurations and store with their configs
+    for i, (config, val_loss) in enumerate(zip(top_configs, val_losses)):
+        model = Model(
+            input_size=train_data[FEATURE_COLS_SIR].shape[1],
+            is_deltas=is_deltas,
+            config=config,
+        )
 
-    best_model.model.fit(X_train, y_train)
-    best_model.is_fitted = True
+        X_train = np.concatenate(
+            [
+                train_data[FEATURE_COLS_SIR].values,
+                train_data[FEATURE_COLS_INTERVENTIONS].values,
+                train_data[FEATURE_COLS_STATIC].values,
+            ],
+            axis=1,
+        )
+        y_train = train_data[LABEL_COLS].values
 
-    return best_config, best_model
+        model.model.fit(X_train, y_train)
+        model.is_fitted = True
+
+        # Store model and its config together
+        sorted_models.append({"model": model, "config": config, "val_loss": val_loss})
+
+    return sorted_models

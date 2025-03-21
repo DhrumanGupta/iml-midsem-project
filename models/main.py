@@ -598,28 +598,63 @@ def grid_search_model(model_name):
 
     # Run grid search
     logger.info(f"Starting grid search for {model_name}...")
-    best_config, best_model = model.grid_search(
+    sorted_models = model.grid_search(
         train_df, val_df, IS_DELTAS, loss_fn=lambda x: evaluate_model(model, x)
     )
 
-    # Save the best model
-    if not os.path.exists(f"models/{model_name}/checkpoints"):
-        os.makedirs(f"models/{model_name}/checkpoints")
+    # Create directory for checkpoints if it doesn't exist
+    checkpoint_dir = f"models/{model_name}/grid_search_checkpoints"
+    if not os.path.exists(checkpoint_dir):
+        os.makedirs(checkpoint_dir)
 
-    model.save_model(
-        best_model, f"models/{model_name}/checkpoints/best_model_grid_search.pth"
-    )
+    # Save all models
+    import json
 
-    # Log the best configuration
-    logger.info(f"Best configuration for {model_name}: {best_config}")
+    # Save a summary file with all configurations
+    summary = []
 
-    # Evaluate the best model
-    loss = evaluate_model(model, best_model)
-    logger.info(
-        f"Test Loss for {model_name} ({'deltas' if IS_DELTAS else 'absolute'}) with grid search: {loss}"
-    )
+    for i, model_info in enumerate(sorted_models):
+        model_instance = model_info["model"]
+        config = model_info["config"]
+        val_loss = model_info["val_loss"]
 
-    return best_model
+        # Create a filename based on rank
+        rank = i + 1
+        filename = f"model_grid_search_rank_{rank}.pth"
+        filepath = os.path.join(checkpoint_dir, filename)
+
+        # Save the model
+        model.save_model(model_instance, filepath)
+
+        # Evaluate on test set
+        test_loss = evaluate_model(model, model_instance)
+
+        # Log results
+        logger.info(f"Model rank {rank}:")
+        logger.info(f"  Configuration: {config}")
+        logger.info(f"  Validation loss: {val_loss:.6f}")
+        logger.info(f"  Test loss: {test_loss:.6f}")
+
+        # Add to summary
+        summary.append(
+            {
+                "rank": rank,
+                "filename": filename,
+                "val_loss": float(val_loss),
+                "test_loss": float(test_loss),
+                "config": config,
+            }
+        )
+
+    # Save summary to JSON file
+    with open(os.path.join(checkpoint_dir, "grid_search_results.json"), "w") as f:
+        json.dump(summary, f, indent=2)
+
+    logger.info(f"Saved {len(sorted_models)} models from grid search")
+    logger.info(f"Best model test loss: {summary[0]['test_loss']:.6f}")
+
+    # Return best model for further use
+    return sorted_models[0]["model"]
 
 
 def main(model_name):
