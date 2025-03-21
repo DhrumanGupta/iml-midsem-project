@@ -14,11 +14,13 @@ def load_data(
     is_deltas: bool = False,
     sequence_length: int = 1,
 ) -> tuple:
-    data_directory = os.path.join("dataset", "processed_data")
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+    data_directory = os.path.join(project_root, "dataset", "processed_data")
     files = sorted(os.listdir(data_directory), key=lambda x: int(x.split(".")[0]))
     logger.info(f"Found {len(files)} files in {data_directory}")
 
-    split_indices_path = os.path.join("dataset", "split_indices.npy")
+    split_indices_path = os.path.join(project_root, "dataset", "split_indices.npy")
 
     if os.path.exists(split_indices_path) and False:
         split_info = np.load(split_indices_path, allow_pickle=True).item()

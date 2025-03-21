@@ -25,15 +25,15 @@ AUTOREGRESSIVE = False
 
 # Hyperparameter search space for grid search
 SEARCH_SPACE = {
-    "n_estimators": tune.grid_search([50, 100, 200, 300, 500]),
-    "learning_rate": tune.grid_search([0.01, 0.05, 0.1, 0.3]),
-    "subsample": tune.grid_search([0.5, 0.7, 0.9, 1.0]),
-    "colsample_bytree": tune.grid_search([0.5, 0.7, 0.9, 1.0]),
+    "n_estimators": tune.grid_search([50, 100, 300, 500]),
+    "learning_rate": tune.grid_search([0.01, 0.1, 0.3]),
+    "subsample": tune.grid_search([0.5, 0.75, 1.0]),
+    "colsample_bytree": tune.grid_search([0.5, 0.75, 1.0]),
     "gamma": tune.grid_search([0.001, 0.01, 0.1]),
     "reg_alpha": tune.grid_search([0.001, 0.01, 0.1]),
     "reg_lambda": tune.grid_search([0.001, 0.01, 0.1, 1.0]),
-    "max_depth": tune.grid_search([3, 4, 5, 6, 7, 8]),
-    "min_child_weight": tune.grid_search([1, 2, 3, 4, 5]),
+    "max_depth": tune.grid_search([3, 5, 7, 9, 11]),
+    "min_child_weight": tune.grid_search([1, 3, 5, 7]),
 }
 
 
@@ -204,9 +204,7 @@ def grid_search(
     val_data,
     is_deltas,
     loss_fn,
-    num_samples=10,
-    max_concurrent_trials=4,
-    # search_dir="./ray_results",
+    max_concurrent_trials=8,
 ):
     """
     Perform hyperparameter optimization using Ray Tune.

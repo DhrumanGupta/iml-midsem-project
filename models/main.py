@@ -356,11 +356,14 @@ _cached_data_loaders = None
 def evaluate_model(model, model_instance):
     global _cached_test_ids, _cached_test_dfs, _cached_data_loaders
 
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     # Use cached values if available, otherwise load from disk
     if _cached_test_ids is None:
+
         # Load the test indices.
         _cached_test_ids = np.load(
-            os.path.join("dataset", "split_indices.npy"), allow_pickle=True
+            os.path.join(project_root, "dataset", "split_indices.npy"),
+            allow_pickle=True,
         ).item()["test"]
 
     if _cached_test_dfs is None or _cached_data_loaders is None:
@@ -369,7 +372,9 @@ def evaluate_model(model, model_instance):
         _cached_test_dfs = []  # Store dataframes for plotting
         for test_id in _cached_test_ids:
             test_df = pd.read_csv(
-                os.path.join("dataset", "processed_data", f"{test_id + 1}.csv")
+                os.path.join(
+                    project_root, "dataset", "processed_data", f"{test_id + 1}.csv"
+                )
             )
             _cached_test_dfs.append(test_df)
             _cached_data_loaders.append(SimulationDataset(test_df))
@@ -594,7 +599,7 @@ def grid_search_model(model_name):
     # Run grid search
     logger.info(f"Starting grid search for {model_name}...")
     best_config, best_model = model.grid_search(
-        train_df, val_df, IS_DELTAS, loss_fn=lambda x: evaluate_model(model_name, x)
+        train_df, val_df, IS_DELTAS, loss_fn=lambda x: evaluate_model(model, x)
     )
 
     # Save the best model
