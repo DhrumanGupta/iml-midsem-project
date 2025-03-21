@@ -347,21 +347,37 @@ def plot_for_model(model, model_instance):
         # plt.show()
 
 
-def evaluate_model(model, model_instance):
-    # Load the test indices.
-    test_ids = np.load(
-        os.path.join("dataset", "split_indices.npy"), allow_pickle=True
-    ).item()["test"]
+# Add these global variables for caching
+_cached_test_ids = None
+_cached_test_dfs = None
+_cached_data_loaders = None
 
-    # Load all test datasets and create a list of SimulationDataset instances.
-    data_loaders = []
-    test_dfs = []  # Store dataframes for plotting
-    for test_id in test_ids:
-        test_df = pd.read_csv(
-            os.path.join("dataset", "processed_data", f"{test_id + 1}.csv")
-        )
-        test_dfs.append(test_df)
-        data_loaders.append(SimulationDataset(test_df))
+
+def evaluate_model(model, model_instance):
+    global _cached_test_ids, _cached_test_dfs, _cached_data_loaders
+
+    # Use cached values if available, otherwise load from disk
+    if _cached_test_ids is None:
+        # Load the test indices.
+        _cached_test_ids = np.load(
+            os.path.join("dataset", "split_indices.npy"), allow_pickle=True
+        ).item()["test"]
+
+    if _cached_test_dfs is None or _cached_data_loaders is None:
+        # Load all test datasets and create a list of SimulationDataset instances.
+        _cached_data_loaders = []
+        _cached_test_dfs = []  # Store dataframes for plotting
+        for test_id in _cached_test_ids:
+            test_df = pd.read_csv(
+                os.path.join("dataset", "processed_data", f"{test_id + 1}.csv")
+            )
+            _cached_test_dfs.append(test_df)
+            _cached_data_loaders.append(SimulationDataset(test_df))
+
+    # Use the cached values
+    test_ids = _cached_test_ids
+    test_dfs = _cached_test_dfs
+    data_loaders = _cached_data_loaders
 
     # Assume all datasets have the same length (150 steps)
     T = 150
