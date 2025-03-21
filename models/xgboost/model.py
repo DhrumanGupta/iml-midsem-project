@@ -26,14 +26,14 @@ AUTOREGRESSIVE = False
 # Hyperparameter search space for grid search
 SEARCH_SPACE = {
     "n_estimators": tune.grid_search([100, 300, 500]),
-    "learning_rate": tune.grid_search([0.01, 0.1, 0.2, 0.3]),
-    "subsample": tune.grid_search([0.5, 0.75, 1.0]),
-    "colsample_bytree": tune.grid_search([0.5, 0.75, 1.0]),
-    "gamma": tune.grid_search([0.001, 0.01, 0.1]),
-    "reg_alpha": tune.grid_search([0.001, 0.01, 0.1]),
-    "reg_lambda": tune.grid_search([0.001, 0.01, 0.1, 1.0]),
-    "max_depth": tune.grid_search([6, 9, 12]),
-    "min_child_weight": tune.grid_search([3, 5, 7]),
+    # "learning_rate": tune.grid_search([0.01, 0.1, 0.2, 0.3]),
+    # "subsample": tune.grid_search([0.5, 0.75, 1.0]),
+    # "colsample_bytree": tune.grid_search([0.5, 0.75, 1.0]),
+    # "gamma": tune.grid_search([0.001, 0.01, 0.1]),
+    # "reg_alpha": tune.grid_search([0.001, 0.01, 0.1]),
+    # "reg_lambda": tune.grid_search([0.001, 0.01, 0.1, 1.0]),
+    # "max_depth": tune.grid_search([6, 9, 12]),
+    # "min_child_weight": tune.grid_search([3, 5, 7]),
 }
 
 
@@ -204,7 +204,7 @@ def grid_search(
     val_data,
     is_deltas,
     loss_fn,
-    max_concurrent_trials=8,
+    max_concurrent_trials=40,
     top_n=10,  # Number of top models to return
 ):
     """
