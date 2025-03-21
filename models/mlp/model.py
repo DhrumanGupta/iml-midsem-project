@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 IS_PYTORCH = True
 
-device = "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class Model(nn.Module):

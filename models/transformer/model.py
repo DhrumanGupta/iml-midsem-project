@@ -10,35 +10,31 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 IS_PYTORCH = True
 
 
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout=0.1, max_len=5000):
-        super(PositionalEncoding, self).__init__()
+class LearnedPositionalEncoding(nn.Module):
+    def __init__(self, d_model, max_len=5000, dropout=0.1):
+        super(LearnedPositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
-
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float32).unsqueeze(1)
-        div_term = torch.exp(
-            torch.arange(0, d_model, 2, dtype=torch.float32)
-            * (-math.log(10000.0) / d_model)
-        )
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0)  # [1, max_len, d_model]
-        self.register_buffer("pe", pe)
+        # Create a learnable embedding matrix for positions.
+        self.pos_embedding = nn.Embedding(max_len, d_model)
 
     def forward(self, x):
         # x shape: [batch, seq_len, d_model]
-        x = x + self.pe[:, : x.size(1)]
+        batch_size, seq_len, _ = x.size()
+        # Generate positions indices [0, 1, 2, ..., seq_len-1] for each sample in the batch.
+        positions = torch.arange(seq_len, device=x.device).unsqueeze(0).expand(batch_size, seq_len)
+        # Retrieve the positional embeddings for each position.
+        pos_embed = self.pos_embedding(positions)
+        # Add positional information to the input.
+        x = x + pos_embed
         return self.dropout(x)
-
 
 class Model(nn.Module):
     def __init__(
         self,
         input_size,
         is_deltas,
-        hidden_size=128,
-        num_layers=4,
+        hidden_size=256,
+        num_layers=8,
         num_heads=8,
         dropout=0.2,
     ):
@@ -55,7 +51,7 @@ class Model(nn.Module):
         self.input_linear = nn.Linear(input_size, hidden_size)
 
         # Positional encoding (only used when seq_len > 1)
-        self.pos_encoder = PositionalEncoding(hidden_size, dropout)
+        self.pos_encoder = LearnedPositionalEncoding(hidden_size, dropout=dropout)
 
         # Transformer encoder; batch_first=True expects input shape [batch, seq_len, hidden_size]
         encoder_layer = nn.TransformerEncoderLayer(
@@ -94,6 +90,8 @@ class Model(nn.Module):
             x_out = self.fc(x)  # [batch, 1, 6]
         elif x_sir.dim() == 3:
             # Sequence mode: concatenate along the feature dimension.
+            # print(x_sir.shape, x_interventions.shape, x_static.shape)
+            # exit()
             x = torch.cat((x_sir, x_interventions, x_static), dim=2).to(device)
             x = self.input_linear(x)  # [batch, seq_len, hidden_size]
             if x.size(1) > 1:

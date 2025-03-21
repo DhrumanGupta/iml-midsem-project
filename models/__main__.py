@@ -10,10 +10,10 @@ import importlib
 
 TRAIN_MODEL = True
 IS_DELTAS = False
-MODEL_TO_LOAD = "model_5.pth"
-EPOCHS = 50
-AUTOREGRESSIVE = True
-BATCH_SIZE = 256
+MODEL_TO_LOAD = "model_1.pth"
+EPOCHS = 5
+AUTOREGRESSIVE = False
+BATCH_SIZE = 512
 
 
 models_dict = {}
@@ -77,6 +77,7 @@ def plot_for_model(model, model_instance):
             if curr_work != last_work:
                 print(f"[{i}] Work changed from {last_work} to {curr_work}")
                 last_work = curr_work
+
 
             outputs: np.ndarray = model.predict(
                 model_instance,

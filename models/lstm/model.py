@@ -13,7 +13,9 @@ class Model(nn.Module):
         self,
         input_size,
         is_deltas,
+        static_size=7,
         hidden_size=128,
+        static_hidden_size=64,
         num_layers=8,
         dropout=0.2,
     ):
@@ -24,15 +26,23 @@ class Model(nn.Module):
 
         # LSTM expects input shape: [batch, seq_len, input_size]
         self.lstm = nn.LSTM(
-            input_size=input_size,
+            input_size=input_size - static_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
             dropout=dropout if num_layers > 1 else 0,
         )
 
+        self.static_fc = nn.Sequential(
+            nn.Linear(static_size, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, static_hidden_size),
+        )
+
         self.fc = nn.Sequential(
-            nn.Linear(hidden_size, 256),
+            nn.Linear(hidden_size + static_hidden_size, 256),
             nn.ReLU(),
             nn.BatchNorm1d(256),
             nn.Linear(256, 6),  # 6 outputs: S, I, R for students and adults
@@ -43,16 +53,19 @@ class Model(nn.Module):
     def forward(self, x_sir, x_interventions, x_static):
         # Old (pointwise) mode: x_sir is [batch, features]
         if x_sir.dim() == 2:
-            x = torch.cat((x_sir, x_interventions, x_static), dim=1).to(device)
+            x = torch.cat((x_sir, x_interventions), dim=1).to(device)
             x = x.unsqueeze(1)  # Make sequence length = 1
         # Sequence mode: x_sir is [batch, seq_len, features]
         elif x_sir.dim() == 3:
-            x = torch.cat((x_sir, x_interventions, x_static), dim=2).to(device)
+            x = torch.cat((x_sir, x_interventions), dim=2).to(device)
         else:
             raise ValueError("Invalid input dimensions")
 
         lstm_out, _ = self.lstm(x)
         lstm_last = lstm_out[:, -1, :]  # use the output from the last time step
+
+        static_out = self.static_fc(x_static)
+        lstm_last = torch.cat((lstm_last, static_out), dim=1)
 
         logits = self.fc(lstm_last)
         students_logits = logits[:, :3]

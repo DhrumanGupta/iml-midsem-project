@@ -58,7 +58,7 @@ class SimulationDataset(Dataset):
         if self.sequence_length == 1:
             return len(self.df)
         else:
-            return len(self.df) - self.sequence_length
+            return len(self.df) // self.sequence_length
 
     def __getitem__(self, idx):
         if self.sequence_length == 1:
@@ -70,9 +70,13 @@ class SimulationDataset(Dataset):
             )
         else:
             # Return a window (of any chosen length) for each modality.
-            x_sir_seq = self.X_sir[idx : idx + self.sequence_length]
-            x_interventions_seq = self.X_interventions[idx : idx + self.sequence_length]
-            x_static_seq = self.X_static[idx : idx + self.sequence_length]
-            # The target is always the next row after the window.
-            target = self.Y[idx + self.sequence_length]
-            return (x_sir_seq, x_interventions_seq, x_static_seq, target)
+            x_sir_seq = self.X_sir[idx * self.sequence_length : (idx + 1) * self.sequence_length]
+            x_interventions_seq = self.X_interventions[idx * self.sequence_length : (idx + 1) * self.sequence_length]
+            x_static_seq = self.X_static[idx * self.sequence_length : (idx + 1) * self.sequence_length]
+            # The target is above but offset by one.
+            target = self.Y[idx * self.sequence_length : (idx + 1) * self.sequence_length]
+            
+            # Assert that all X_static_seq are the same.
+            assert np.all(x_static_seq == x_static_seq[0]), "All x_static_seq must be the same"
+
+            return (x_sir_seq, x_interventions_seq, x_static_seq[0], target)
