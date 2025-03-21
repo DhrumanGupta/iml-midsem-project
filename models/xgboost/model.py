@@ -105,9 +105,11 @@ def predict(model, x_sir, x_interventions, x_static) -> np.ndarray:
 def save_model(model, path):
     import joblib
 
+    # Save the XGBoost model and relevant attributes
     model_data = {
-        "model": model,
+        "xgb_model": model.model,  # Save the actual XGBoost model
         "is_fitted": model.is_fitted,
+        "is_deltas": model.is_deltas,  # Also save is_deltas attribute
     }
     joblib.dump(model_data, path)
 
@@ -115,9 +117,16 @@ def save_model(model, path):
 def load_model(model, path):
     import joblib
 
+    # Load the saved model data
     model_data = joblib.load(path)
-    model = model_data["model"]
+
+    # Update the passed model's attributes
+    model.model = model_data["xgb_model"]
     model.is_fitted = model_data["is_fitted"]
+    model.is_deltas = model_data["is_deltas"]
+
+    # Return the updated model for convenience
+    return model
 
 
 def calculate_loss_df(model, data):
