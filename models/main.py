@@ -12,7 +12,6 @@ TRAIN_MODEL = False
 IS_DELTAS = True
 MODEL_TO_LOAD = "model_1.pth"
 EPOCHS = 50
-AUTOREGRESSIVE = False
 BATCH_SIZE = 256
 
 PLOT_TEST = False
@@ -335,7 +334,7 @@ def plot_for_model(model, model_instance):
         # Get next index which is not taken
         idx = 0
         postfix = "deltas" if IS_DELTAS else "absolute"
-        directory = f"plots/{model_name}/{postfix}"
+        directory = f"plots/{model}/{postfix}"
         os.makedirs(directory, exist_ok=True)
         while os.path.exists(f"{directory}/plot_{idx}_{type}.png"):
             idx += 1
@@ -430,7 +429,7 @@ def evaluate_model(model, model_instance):
         import matplotlib.pyplot as plt
 
         postfix = "deltas" if IS_DELTAS else "absolute"
-        directory = f"plots/{model_name}/{postfix}/all_simulations"
+        directory = f"plots/{model}/{postfix}/all_simulations"
         os.makedirs(directory, exist_ok=True)
 
         for test_idx in range(n_tests):
@@ -547,11 +546,70 @@ def evaluate_model(model, model_instance):
     return total_loss / (150 * len(data_loaders) * 6)
 
 
+def grid_search_model(model_name):
+    """Perform hyperparameter grid search for the specified model"""
+    if model_name not in models_dict:
+        print(f"Model {model_name} not found")
+        sys.exit(1)
+
+    model = models_dict[model_name]
+
+    # Check if the model supports grid search
+    if not hasattr(model, "grid_search"):
+        print(f"Model {model_name} does not support grid search")
+        sys.exit(1)
+
+    # Load data for training and validation
+    data = load_data(
+        batch_size=BATCH_SIZE,
+        pytorch=model.IS_PYTORCH,
+        is_deltas=IS_DELTAS,
+        sequence_length=150 if model.AUTOREGRESSIVE else 1,
+    )
+
+    # Handle different return types from load_data based on pytorch flag
+    if model.IS_PYTORCH:
+        train_loader, val_loader, _ = data
+        train_df = train_loader.dataset.df
+        val_df = val_loader.dataset.df
+    else:
+        train_df, val_df, _ = data
+
+    # Run grid search
+    logger.info(f"Starting grid search for {model_name}...")
+    best_config, best_model = model.grid_search(
+        train_df, val_df, IS_DELTAS, loss_fn=lambda x: evaluate_model(model_name, x)
+    )
+
+    # Save the best model
+    if not os.path.exists(f"models/{model_name}/checkpoints"):
+        os.makedirs(f"models/{model_name}/checkpoints")
+
+    model.save_model(
+        best_model, f"models/{model_name}/checkpoints/best_model_grid_search.pth"
+    )
+
+    # Log the best configuration
+    logger.info(f"Best configuration for {model_name}: {best_config}")
+
+    # Evaluate the best model
+    loss = evaluate_model(model, best_model)
+    logger.info(
+        f"Test Loss for {model_name} ({'deltas' if IS_DELTAS else 'absolute'}) with grid search: {loss}"
+    )
+
+    return best_model
+
+
 def main(model_name):
     if model_name not in models_dict:
         print(f"Model {model_name} not found")
         sys.exit(1)
     model = models_dict[model_name]
+
+    # Add grid search option
+    if len(sys.argv) > 2 and sys.argv[2] == "--grid-search":
+        return grid_search_model(model_name)
 
     model_instance = model.Model(input_size=FEATURE_SIZE, is_deltas=IS_DELTAS)
 
@@ -567,7 +625,7 @@ def main(model_name):
             batch_size=BATCH_SIZE,
             pytorch=model.IS_PYTORCH,
             is_deltas=IS_DELTAS,
-            sequence_length=150 if AUTOREGRESSIVE else 1,
+            sequence_length=150 if model.AUTOREGRESSIVE else 1,
         )
         for avg_train_loss, avg_val_loss, epoch in model.train_model(
             model_instance, train_loader, val_loader, EPOCHS
