@@ -635,6 +635,14 @@ def grid_search_model(model_name):
         logger.info(f"  Validation loss: {val_loss:.6f}")
         logger.info(f"  Test loss: {test_loss:.6f}")
 
+        # Convert NumPy types to native Python types for JSON serialization
+        serializable_config = {}
+        for k, v in config.items():
+            if hasattr(v, "item"):  # Check if it's a NumPy type with item() method
+                serializable_config[k] = v.item()  # Convert to native Python type
+            else:
+                serializable_config[k] = v
+
         # Add to summary
         summary.append(
             {
@@ -642,7 +650,7 @@ def grid_search_model(model_name):
                 "filename": filename,
                 "val_loss": float(val_loss),
                 "test_loss": float(test_loss),
-                "config": config,
+                "config": serializable_config,
             }
         )
 

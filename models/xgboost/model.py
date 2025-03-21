@@ -25,15 +25,15 @@ AUTOREGRESSIVE = False
 
 # Hyperparameter search space for grid search
 SEARCH_SPACE = {
-    "n_estimators": tune.grid_search([50, 100, 300, 500]),
-    # "learning_rate": tune.grid_search([0.01, 0.1, 0.3]),
-    # "subsample": tune.grid_search([0.5, 0.75, 1.0]),
-    # "colsample_bytree": tune.grid_search([0.5, 0.75, 1.0]),
-    # "gamma": tune.grid_search([0.001, 0.01, 0.1]),
-    # "reg_alpha": tune.grid_search([0.001, 0.01, 0.1]),
-    # "reg_lambda": tune.grid_search([0.001, 0.01, 0.1, 1.0]),
-    # "max_depth": tune.grid_search([3, 5, 7, 9, 11]),
-    # "min_child_weight": tune.grid_search([1, 3, 5, 7]),
+    "n_estimators": tune.grid_search([100, 300, 500]),
+    "learning_rate": tune.grid_search([0.01, 0.1, 0.2, 0.3]),
+    "subsample": tune.grid_search([0.5, 0.75, 1.0]),
+    "colsample_bytree": tune.grid_search([0.5, 0.75, 1.0]),
+    "gamma": tune.grid_search([0.001, 0.01, 0.1]),
+    "reg_alpha": tune.grid_search([0.001, 0.01, 0.1]),
+    "reg_lambda": tune.grid_search([0.001, 0.01, 0.1, 1.0]),
+    "max_depth": tune.grid_search([6, 9, 12]),
+    "min_child_weight": tune.grid_search([3, 5, 7]),
 }
 
 
@@ -233,7 +233,7 @@ def grid_search(
 
     # Configure the tuner
     tuner = tune.Tuner(
-        tune.with_resources(trainable_func, {"cpu": 1}),
+        tune.with_resources(trainable_func, {"cpu": 2}),
         tune_config=tune.TuneConfig(
             metric="val_loss",
             mode="min",
@@ -247,8 +247,18 @@ def grid_search(
 
     # Get the top N configurations and results
     top_results = results.get_dataframe().sort_values("val_loss").head(top_n)
-    columns = [f"config/{key}" for key in SEARCH_SPACE.keys()]
-    top_configs = [dict(row) for _, row in top_results[columns].iterrows()]
+
+    # Fix: Extract configuration parameters correctly by removing 'config/' prefix
+    config_columns = [col for col in top_results.columns if col.startswith("config/")]
+    top_configs = []
+    for _, row in top_results.iterrows():
+        config_dict = {}
+        for col in config_columns:
+            # Remove 'config/' prefix from parameter name
+            param_name = col.replace("config/", "")
+            config_dict[param_name] = row[col]
+        top_configs.append(config_dict)
+
     val_losses = top_results["val_loss"].tolist()
 
     print(f"Top {top_n} hyperparameter configurations found:")

@@ -1,0 +1,38 @@
+[
+  {
+    "rank": 1,
+    "filename": "model_grid_search_rank_1.pth",
+    "val_loss": 0.00010515388567000628,
+    "test_loss": 0.00010515388567000628,
+    "config": {
+      "n_estimators": 300
+    }
+  },
+  {
+    "rank": 2,
+    "filename": "model_grid_search_rank_2.pth",
+    "val_loss": 0.00010515388567000628,
+    "test_loss": 0.00010515388567000628,
+    "config": {
+      "n_estimators": 500
+    }
+  },
+  {
+    "rank": 3,
+    "filename": "model_grid_search_rank_3.pth",
+    "val_loss": 0.00010713852680055425,
+    "test_loss": 0.00010713852680055425,
+    "config": {
+      "n_estimators": 100
+    }
+  },
+  {
+    "rank": 4,
+    "filename": "model_grid_search_rank_4.pth",
+    "val_loss": 0.00011559390986803919,
+    "test_loss": 0.00011559390986803919,
+    "config": {
+      "n_estimators": 50
+    }
+  }
+]
