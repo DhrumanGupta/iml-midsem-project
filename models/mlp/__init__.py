@@ -5,6 +5,7 @@ from .model import (
     load_model,
     train_model,
     predict,
+    AUTOREGRESSIVE,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "load_model",
     "train_model",
     "predict",
+    "AUTOREGRESSIVE",
 ]

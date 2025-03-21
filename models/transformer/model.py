@@ -8,6 +8,7 @@ from tqdm import tqdm
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 IS_PYTORCH = True
+AUTOREGRESSIVE = True
 
 
 class LearnedPositionalEncoding(nn.Module):

@@ -7,6 +7,7 @@ from tqdm import tqdm
 IS_PYTORCH = True
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+AUTOREGRESSIVE = False
 
 
 class Model(nn.Module):
@@ -14,8 +15,17 @@ class Model(nn.Module):
         self,
         input_size,
         is_deltas,
-        hidden_sizes=[256, 512, 1024, 512, 512, 256],
+        config={
+            "hidden_sizes": [256, 512, 1024, 512, 512, 256],
+            "lr": 0.01,
+        },
     ):
+        if config is None or "hidden_sizes" not in config:
+            raise ValueError("hidden_sizes must be provided in config")
+
+        if not config.get("lr"):
+            config["lr"] = 0.01
+
         super(Model, self).__init__()
 
         # Create a list to hold all layers
@@ -26,8 +36,10 @@ class Model(nn.Module):
         # Input layer
         prev_size = input_size
 
+        self.lr = config["lr"]
+
         # Add hidden layers
-        for hidden_size in hidden_sizes:
+        for hidden_size in config["hidden_sizes"]:
             layers.append(nn.Linear(prev_size, hidden_size))
             layers.append(nn.ReLU())
             layers.append(nn.BatchNorm1d(hidden_size))  # Add batch normalization
@@ -40,7 +52,7 @@ class Model(nn.Module):
         # self.fc_students = nn.Linear(hidden_sizes[-1], 3)
         # self.fc_adults = nn.Linear(hidden_sizes[-1], 3)
 
-        self.fc = nn.Linear(hidden_sizes[-1], 6)
+        self.fc = nn.Linear(config["hidden_sizes"][-1], 6)
 
         self.to(device)
 
@@ -71,7 +83,7 @@ class Model(nn.Module):
 
 
 def train_model(model, train_loader, val_loader, num_epochs):
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(model.parameters(), lr=model.lr)
     criterion = nn.MSELoss()
 
     for epoch in range(num_epochs):

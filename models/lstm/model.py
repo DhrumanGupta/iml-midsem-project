@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 IS_PYTORCH = True
 device = "cuda" if torch.cuda.is_available() else "cpu"
+AUTOREGRESSIVE = True
 
 
 class Model(nn.Module):
