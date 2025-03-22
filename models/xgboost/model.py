@@ -6,10 +6,10 @@ from dataset.dataset import (
     FEATURE_COLS_STATIC,
     LABEL_COLS,
 )
-from ray import train, tune
-from ray.tune.search import ConcurrencyLimiter, BasicVariantGenerator
-from ray.tune.schedulers import ASHAScheduler
+from sklearn.model_selection import GridSearchCV
 import os
+from sklearn.model_selection import ParameterGrid
+from joblib import Parallel, delayed
 
 IS_PYTORCH = False
 AUTOREGRESSIVE = False
@@ -23,17 +23,17 @@ AUTOREGRESSIVE = False
 # min_child_weight invariant
 # max_depth to be explored
 
-# Hyperparameter search space for grid search
-SEARCH_SPACE = {
-    "n_estimators": tune.grid_search([100, 300, 500]),
-    # "learning_rate": tune.grid_search([0.01, 0.1, 0.2, 0.3]),
-    # "subsample": tune.grid_search([0.5, 0.75, 1.0]),
-    # "colsample_bytree": tune.grid_search([0.5, 0.75, 1.0]),
-    # "gamma": tune.grid_search([0.001, 0.01, 0.1]),
-    # "reg_alpha": tune.grid_search([0.001, 0.01, 0.1]),
-    # "reg_lambda": tune.grid_search([0.001, 0.01, 0.1, 1.0]),
-    # "max_depth": tune.grid_search([6, 9, 12]),
-    # "min_child_weight": tune.grid_search([3, 5, 7]),
+# Hyperparameter search space for grid search (sklearn format)
+PARAM_GRID = {
+    "n_estimators": [100, 300, 500],
+    # "learning_rate": [0.01, 0.1, 0.2, 0.3],
+    # "subsample": [0.5, 0.75, 1.0],
+    # "colsample_bytree": [0.5, 0.75, 1.0],
+    # "gamma": [0.001, 0.01, 0.1],
+    # "reg_alpha": [0.001, 0.01, 0.1],
+    # "reg_lambda": [0.001, 0.01, 0.1, 1.0],
+    # "max_depth": [6, 9, 12],
+    # "min_child_weight": [3, 5, 7],
 }
 
 
@@ -47,15 +47,16 @@ class Model:
             "learning_rate": 0.15,
             "subsample": 0.8,
         },
+        n_jobs=2,
     ):
         self.is_deltas = is_deltas
 
         self.model = XGBRegressor(
             **config,
             objective="reg:squarederror",
-            n_jobs=-1,  # Use all CPU cores
+            n_jobs=n_jobs,
         )
-        self.is_fitted = False
+        self.is_fitted = False 
 
 
 def train_model(model, train_data, val_data, num_epochs, loss_fn):
@@ -148,35 +149,6 @@ def load_model(model, path):
     return model
 
 
-# Training function for a single trial
-def train_xgb_tune(config, train_data, val_data, is_deltas, loss_fn):
-    # Create model with the trial's hyperparameters
-    model = Model(
-        input_size=train_data[FEATURE_COLS_SIR].shape[1],
-        is_deltas=is_deltas,
-        config=config,
-    )
-
-    # Train model
-    X_train = np.concatenate(
-        [
-            train_data[FEATURE_COLS_SIR].values,
-            train_data[FEATURE_COLS_INTERVENTIONS].values,
-            train_data[FEATURE_COLS_STATIC].values,
-        ],
-        axis=1,
-    )
-    y_train = train_data[LABEL_COLS].values
-
-    model.model.fit(X_train, y_train)
-    model.is_fitted = True
-
-    val_loss = loss_fn(model)
-
-    # Report metrics to Ray Tune
-    train.report({"val_loss": val_loss})
-
-
 def calculate_loss_df(model, data):
     # Get features and labels from DataFrames
     X = np.concatenate(
@@ -204,80 +176,34 @@ def grid_search(
     val_data,
     is_deltas,
     loss_fn,
-    max_concurrent_trials=40,
+    n_jobs=4,  # Number of parallel jobs
     top_n=10,  # Number of top models to return
 ):
     """
-    Perform hyperparameter optimization using Ray Tune.
+    Perform hyperparameter optimization by training individual models.
 
     Args:
         train_data: Training data DataFrame
         val_data: Validation data DataFrame
         is_deltas: Whether the model predicts deltas or absolute values
-        loss_fn: Function to evaluate model performance
-        max_concurrent_trials: Maximum number of trials to run in parallel
+        loss_fn: Function to evaluate model performance on validation data
+        n_jobs: Number of parallel jobs (default: 4)
         top_n: Number of top models to return (default: 10)
 
     Returns:
         sorted_models: List of dictionaries containing models and their configs,
                        sorted from best to worst performance
     """
-    # Set up the trainable function with parameters
-    trainable_func = tune.with_parameters(
-        train_xgb_tune,
-        train_data=train_data,
-        val_data=val_data,
-        is_deltas=is_deltas,
-        loss_fn=loss_fn,
-    )
-
-    # Configure the tuner
-    tuner = tune.Tuner(
-        tune.with_resources(trainable_func, {"cpu": 2}),
-        tune_config=tune.TuneConfig(
-            metric="val_loss",
-            mode="min",
-            max_concurrent_trials=max_concurrent_trials,
-        ),
-        param_space=SEARCH_SPACE,
-    )
-
-    # Execute the optimization
-    results = tuner.fit()
-
-    # Get the top N configurations and results
-    top_results = results.get_dataframe().sort_values("val_loss").head(top_n)
-
-    # Fix: Extract configuration parameters correctly by removing 'config/' prefix
-    config_columns = [col for col in top_results.columns if col.startswith("config/")]
-    top_configs = []
-    for _, row in top_results.iterrows():
-        config_dict = {}
-        for col in config_columns:
-            # Remove 'config/' prefix from parameter name
-            param_name = col.replace("config/", "")
-            config_dict[param_name] = row[col]
-        top_configs.append(config_dict)
-
-    val_losses = top_results["val_loss"].tolist()
-
-    print(f"Top {top_n} hyperparameter configurations found:")
-    for i, (config, val_loss) in enumerate(zip(top_configs, val_losses)):
-        print(f"\nRank {i+1} (val_loss: {val_loss:.6f}):")
-        for param, value in config.items():
-            print(f"  {param}: {value}")
-
-    # Create a list to store models with their configs
-    sorted_models = []
-
-    # Train models with the top configurations and store with their configs
-    for i, (config, val_loss) in enumerate(zip(top_configs, val_losses)):
+    # Function to train and evaluate a single model configuration
+    def train_and_evaluate(config):
+        # Create model with the configuration
         model = Model(
             input_size=train_data[FEATURE_COLS_SIR].shape[1],
             is_deltas=is_deltas,
             config=config,
         )
-
+        
+        # Prepare training data
         X_train = np.concatenate(
             [
                 train_data[FEATURE_COLS_SIR].values,
@@ -287,11 +213,40 @@ def grid_search(
             axis=1,
         )
         y_train = train_data[LABEL_COLS].values
-
+        
+        # Train the model
         model.model.fit(X_train, y_train)
         model.is_fitted = True
-
-        # Store model and its config together
-        sorted_models.append({"model": model, "config": config, "val_loss": val_loss})
-
+        
+        # Evaluate the model using the provided loss_fn
+        val_loss = loss_fn(model)
+        
+        return {"model": model, "config": config, "val_loss": val_loss}
+    
+    # Generate all parameter combinations
+    param_combinations = list(ParameterGrid(PARAM_GRID))
+    print(f"Testing {len(param_combinations)} parameter combinations")
+    
+    # Train and evaluate models in parallel
+    print(f"Starting parallel training with {n_jobs} jobs")
+    results = Parallel(n_jobs=n_jobs, verbose=10)(
+        delayed(train_and_evaluate)(config) for config in param_combinations
+    )
+    
+    # Sort models by validation loss (ascending)
+    sorted_models = sorted(results, key=lambda x: x["val_loss"])
+    
+    # Keep only the top N models
+    sorted_models = sorted_models[:top_n]
+    
+    # Print results
+    print(f"\nTop {len(sorted_models)} hyperparameter configurations found:")
+    for i, result in enumerate(sorted_models):
+        config = result["config"]
+        val_loss = result["val_loss"]
+        
+        print(f"\nRank {i+1} (val_loss: {val_loss:.6f}):")
+        for param, value in config.items():
+            print(f"  {param}: {value}")
+    
     return sorted_models
