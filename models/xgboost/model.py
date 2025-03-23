@@ -37,15 +37,17 @@ PARAM_GRID = {
 }
 
 
+
 class Model:
     def __init__(
         self,
         input_size,
         is_deltas,
         config={
-            "n_estimators": 100,
-            "learning_rate": 0.15,
-            "subsample": 0.8,
+            "colsample_bytree": 0.75,
+            "learning_rate": 0.1,
+            "max_depth": 10,
+            "n_estimators": 300,
         },
         n_jobs=2,
     ):
@@ -56,7 +58,7 @@ class Model:
             objective="reg:squarederror",
             n_jobs=n_jobs,
         )
-        self.is_fitted = False 
+        self.is_fitted = False
 
 
 def train_model(model, train_data, val_data, num_epochs, loss_fn):
@@ -194,6 +196,7 @@ def grid_search(
         sorted_models: List of dictionaries containing models and their configs,
                        sorted from best to worst performance
     """
+
     # Function to train and evaluate a single model configuration
     def train_and_evaluate(config):
         # Create model with the configuration
@@ -202,7 +205,7 @@ def grid_search(
             is_deltas=is_deltas,
             config=config,
         )
-        
+
         # Prepare training data
         X_train = np.concatenate(
             [
@@ -213,40 +216,40 @@ def grid_search(
             axis=1,
         )
         y_train = train_data[LABEL_COLS].values
-        
+
         # Train the model
         model.model.fit(X_train, y_train)
         model.is_fitted = True
-        
+
         # Evaluate the model using the provided loss_fn
         val_loss = loss_fn(model)
-        
+
         return {"model": model, "config": config, "val_loss": val_loss}
-    
+
     # Generate all parameter combinations
     param_combinations = list(ParameterGrid(PARAM_GRID))
     print(f"Testing {len(param_combinations)} parameter combinations")
-    
+
     # Train and evaluate models in parallel
     print(f"Starting parallel training with {n_jobs} jobs")
     results = Parallel(n_jobs=n_jobs, verbose=10)(
         delayed(train_and_evaluate)(config) for config in param_combinations
     )
-    
+
     # Sort models by validation loss (ascending)
     sorted_models = sorted(results, key=lambda x: x["val_loss"])
-    
+
     # Keep only the top N models
     sorted_models = sorted_models[:top_n]
-    
+
     # Print results
     print(f"\nTop {len(sorted_models)} hyperparameter configurations found:")
     for i, result in enumerate(sorted_models):
         config = result["config"]
         val_loss = result["val_loss"]
-        
+
         print(f"\nRank {i+1} (val_loss: {val_loss:.6f}):")
         for param, value in config.items():
             print(f"  {param}: {value}")
-    
+
     return sorted_models

@@ -48,7 +48,7 @@ async def run_simulation(model_config: ModelConfig):
         # Load the model instance
         model_instance = load_model(
             model_config.model_name,
-            f"models/{model_config.model_name}/checkpoints/model_1.pth",
+            f"models/{model_config.model_name}/grid_search_checkpoints/model_grid_search_rank_1.pth",
         )
 
         # Run the test

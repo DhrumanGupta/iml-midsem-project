@@ -10,12 +10,12 @@ import importlib
 
 TRAIN_MODEL = False
 IS_DELTAS = True
-MODEL_TO_LOAD = "model_1.pth"
+MODEL_TO_LOAD = "grid_search_checkpoints/model_grid_search_rank_1.pth"
 EPOCHS = 50
 BATCH_SIZE = 256
 
 PLOT_TEST = False
-PLOT_FOR_ALL = False
+PLOT_FOR_ALL = True
 
 IS_TEST_MODE = True
 
@@ -681,9 +681,7 @@ def main(model_name):
         os.makedirs(f"models/{model_name}/checkpoints")
 
     if not TRAIN_MODEL:
-        model.load_model(
-            model_instance, f"models/{model_name}/checkpoints/{MODEL_TO_LOAD}"
-        )
+        model.load_model(model_instance, f"models/{model_name}/{MODEL_TO_LOAD}")
     else:
         train_loader, val_loader, _ = load_data(
             batch_size=BATCH_SIZE,
