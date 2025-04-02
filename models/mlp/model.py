@@ -16,7 +16,7 @@ class Model(nn.Module):
         input_size,
         is_deltas,
         config={
-            "hidden_sizes": [256, 512, 1024, 512, 512, 256],
+            "hidden_sizes": [256, 512, 512, 256],
             "lr": 0.01,
         },
     ):

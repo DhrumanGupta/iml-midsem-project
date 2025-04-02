@@ -42,13 +42,13 @@
 \end{center}
 \medskip
 
-{\textbf{Collaborators:} None} \hfill {\textbf{Name: Rushil Gupta, Dhruman Gupta, Vishnu Varadarajan} }
+{\textbf{Name: Rushil Gupta, Dhruman Gupta, Vishnu Varadarajan} }
 
 \bigskip
 \hrule
 
 \begin{abstract}
-\noindent Agent-based models are a cornerstone in epidemiological research, enabling detailed simulations of disease spread by parameterizing aspects of the city, the infection process, and interventions. However, these simulations are computationally expensive, limiting the feasibility of counterfactual analyses across a large parameter space. In this project, we propose to run a large number of simulations upfront to generate a comprehensive dataset and then use machine learning models to learn a mapping from the parameter space to the SIR space. This map can later be used for rapid counterfactual analysis. We investigate several model architectures, including Feed Forward Networks, LSTMs, and XGBoost, and demonstrate that predicting the change (delta) in the SIR state yields superior performance compared to directly predicting the next state.
+\noindent Agent-based models are a cornerstone in epidemiological research, enabling detailed simulations of disease spread by parameterizing aspects of the city, the infection process, and interventions. However, these simulations are computationally expensive, limiting the feasibility of counterfactual analyses across a large parameter space. In this project, we propose to run a large number of simulations upfront to generate a comprehensive dataset and then use machine learning models to learn a mapping from the parameter space to the SIR space. This map can later be used for rapid counterfactual analysis. We investigate several model architectures, including Feed Forward Networks and XGBoost, and demonstrate that predicting the change (delta) in the SIR state yields superior performance compared to directly predicting the next state.
 \end{abstract}
 
 \section{Introduction}
@@ -113,15 +113,6 @@ The FFN was designed to map the input $(\mathbf{s}_t, \mathbf{u}_t)$ directly to
 \end{figure}
 
 \newpage
-\subsection{LSTMs}
-Given the sequential nature of the simulation data, LSTMs were employed to better capture temporal dependencies. Despite their capability to model sequences, similar to FFNs, LSTMs also resulted in smoothed outputs that did not resemble realistic SIR curves.
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.8\textwidth]{figures/lstm.png}
-    \caption{LSTM model predictions for the SIR dynamics}
-    \label{fig:lstm}
-\end{figure}
 
 \subsection{XGBoost}
 XGBoost, a gradient boosting framework, was applied in two different setups. Empirically, the delta prediction approach proved more effective. The model was able to give good predictions for the SIR trajectories for unseen input parameters.
@@ -135,7 +126,7 @@ XGBoost, a gradient boosting framework, was applied in two different setups. Emp
 
 \newpage
 \section{Experimental Results}
-Our evaluation focused on comparing the predicted SIR trajectories to the ground truth obtained from the agent-based simulations. While both FFN and LSTM models resulted in predictions that were overly smoothed and deviated from expected SIR dynamics, the XGBoost model—particularly in the delta prediction setup—closely tracked the ground truth curves.
+Our evaluation focused on comparing the predicted SIR trajectories to the ground truth obtained from the agent-based simulations. While a FFN model resulted in predictions that were overly smoothed and deviated from expected SIR dynamics, the XGBoost model—particularly in the delta prediction setup—closely tracked the ground truth curves.
 
 \begin{figure}[h]
     \centering

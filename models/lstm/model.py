@@ -128,9 +128,7 @@ def train_model(model, train_loader, val_loader, num_epochs):
                     if seq_length > 1
                     else x_interventions
                 )
-                curr_x_static = (
-                    x_static[:, t : t + 1, :] if seq_length > 1 else x_static
-                )
+                curr_x_static = x_static
 
                 # Get next timestep's ground truth
                 next_sir = x_sir[:, t + 1, :] if seq_length > 1 else labels
@@ -181,9 +179,7 @@ def train_model(model, train_loader, val_loader, num_epochs):
                         if seq_length > 1
                         else x_interventions
                     )
-                    curr_x_static = (
-                        x_static[:, t : t + 1, :] if seq_length > 1 else x_static
-                    )
+                    curr_x_static = x_static
 
                     next_sir = x_sir[:, t + 1, :] if seq_length > 1 else labels
 

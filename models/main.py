@@ -11,6 +11,7 @@ import importlib
 TRAIN_MODEL = True
 IS_DELTAS = False
 MODEL_TO_LOAD = "grid_search_checkpoints/model_grid_search_rank_1.pth"
+MODEL_TO_LOAD = "checkpoints/model_2.pth"
 EPOCHS = 5
 BATCH_SIZE = 256
 
@@ -277,7 +278,7 @@ def plot_for_model(model, model_instance):
         plt.title("Student Population SIR Model")
         plt.xlabel("Time Steps")
         plt.ylabel("Ratio")
-        # plt.legend()
+        plt.legend()
         plt.grid(True)
 
         # Plot adult ratios
@@ -327,19 +328,98 @@ def plot_for_model(model, model_instance):
         plt.title("Adult Population SIR Model")
         plt.xlabel("Time Steps")
         plt.ylabel("Ratio")
-        # plt.legend()
+        plt.legend()
         plt.tight_layout()
         plt.grid(True)
 
         # Get next index which is not taken
         idx = 0
         postfix = "deltas" if IS_DELTAS else "absolute"
-        directory = f"plots/{model}/{postfix}"
+        directory = f"plots/{model.__name__ if hasattr(model, '__name__') else str(model)}/plots"
         os.makedirs(directory, exist_ok=True)
         while os.path.exists(f"{directory}/plot_{idx}_{type}.png"):
             idx += 1
 
         plt.savefig(f"{directory}/plot_{idx}_{type}.png")
+
+        plt.cla()
+        plt.clf()
+
+        agg_pred_sus = sir_array[:, 0] * x_static[0] + sir_array[:, 3] * x_static[1]
+        agg_pred_inf = sir_array[:, 1] * x_static[0] + sir_array[:, 4] * x_static[1]
+        agg_pred_rec = sir_array[:, 2] * x_static[0] + sir_array[:, 5] * x_static[1]
+
+        # Real data aggregate curves: sum of students and adults
+        agg_real_sus = (
+            test_df["S_Students"] * x_static[0] + test_df["S_Adults"] * x_static[1]
+        )
+        agg_real_inf = (
+            test_df["I_Students"] * x_static[0] + test_df["I_Adults"] * x_static[1]
+        )
+        agg_real_rec = (
+            test_df["R_Students"] * x_static[0] + test_df["R_Adults"] * x_static[1]
+        )
+
+        # Create the aggregate plot
+        plt.figure(figsize=(10, 6))
+        plt.plot(
+            agg_pred_sus,
+            label="Susceptible - Predicted",
+            linestyle="--",
+            color="blue",
+            alpha=0.7,
+        )
+        plt.plot(
+            agg_real_sus,
+            label="Susceptible - Real",
+            linestyle="-",
+            color="blue",
+            alpha=0.7,
+        )
+
+        plt.plot(
+            agg_pred_inf,
+            label="Infected - Predicted",
+            linestyle="--",
+            color="red",
+            alpha=0.7,
+        )
+        plt.plot(
+            agg_real_inf, label="Infected - Real", linestyle="-", color="red", alpha=0.7
+        )
+
+        plt.plot(
+            agg_pred_rec,
+            label="Recovered - Predicted",
+            linestyle="--",
+            color="green",
+            alpha=0.7,
+        )
+        plt.plot(
+            agg_real_rec,
+            label="Recovered - Real",
+            linestyle="-",
+            color="green",
+            alpha=0.7,
+        )
+
+        plt.title(f"Aggregate SIR Model")
+        plt.xlabel("Time Steps")
+        plt.ylabel("Population (Aggregate)")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+
+        # Save the plot into a directory that distinguishes by model and split type.
+        idx = 0
+        directory = f"plots/{model.__name__ if hasattr(model, '__name__') else str(model)}/aggregate"
+        os.makedirs(directory, exist_ok=True)
+        while os.path.exists(os.path.join(directory, f"plot_{idx}_{type}.png")):
+            idx += 1
+
+        save_path = os.path.join(directory, f"plot_{idx}_{type}.png")
+        plt.savefig(save_path)
+        print(f"Aggregate plot saved to {save_path}")
 
         plt.cla()
         plt.clf()
