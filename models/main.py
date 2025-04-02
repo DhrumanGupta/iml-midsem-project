@@ -8,16 +8,16 @@ from dataset.dataset import FEATURE_SIZE, SimulationDataset
 from logger import logger
 import importlib
 
-TRAIN_MODEL = False
-IS_DELTAS = True
+TRAIN_MODEL = True
+IS_DELTAS = False
 MODEL_TO_LOAD = "grid_search_checkpoints/model_grid_search_rank_1.pth"
-EPOCHS = 50
+EPOCHS = 5
 BATCH_SIZE = 256
 
-PLOT_TEST = False
-PLOT_FOR_ALL = True
+PLOT_TEST = True
+PLOT_FOR_ALL = False
 
-IS_TEST_MODE = True
+IS_TEST_MODE = False
 
 
 INITIAL_CONFIG = {
@@ -387,6 +387,7 @@ def evaluate_model(model, model_instance):
     # Assume all datasets have the same length (150 steps)
     T = 150
     n_tests = len(data_loaders)
+    n_tests = 2
 
     # Initialize current SIR states for each test dataset.
     current_sirs = []
