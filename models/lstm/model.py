@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 IS_PYTORCH = True
 device = "cuda" if torch.cuda.is_available() else "cpu"
-AUTOREGRESSIVE = True
+AUTOREGRESSIVE = False
 
 
 class Model(nn.Module):
@@ -17,7 +17,7 @@ class Model(nn.Module):
         static_size=7,
         hidden_size=128,
         static_hidden_size=64,
-        num_layers=8,
+        num_layers=6,
         dropout=0.2,
     ):
         super(Model, self).__init__()
@@ -73,8 +73,12 @@ class Model(nn.Module):
         adults_logits = logits[:, 3:]
 
         if self.is_deltas:
-            students_probs = students_logits
-            adults_probs = adults_logits
+            students_probs = students_logits - (
+                students_logits.sum(axis=1, keepdims=True) / 3
+            )
+            adults_probs = adults_logits - (
+                adults_logits.sum(axis=1, keepdims=True) / 3
+            )
         else:
             students_logits = torch.sigmoid(students_logits)
             adults_logits = torch.sigmoid(adults_logits)
@@ -110,48 +114,20 @@ def train_model(model, train_loader, val_loader, num_epochs):
             x_interventions = x_interventions.to(device)
             x_static = x_static.to(device)
 
-            # For autoregressive training, we need sequence data
-            seq_length = x_sir.shape[1] if x_sir.dim() == 3 else 1
-
             # Reset gradients once per batch
             optimizer.zero_grad()
 
-            # Initialize total loss for this batch
-            batch_loss = torch.tensor(0.0, device=device, requires_grad=True)
+            # Make prediction for next timestep
+            preds = model(x_sir, x_interventions, x_static)
 
-            # For each step in the sequence
-            for t in range(seq_length - 1):
-                # Get current timestep data
-                curr_x_sir = x_sir[:, t : t + 1, :] if seq_length > 1 else x_sir
-                curr_x_interventions = (
-                    x_interventions[:, t : t + 1, :]
-                    if seq_length > 1
-                    else x_interventions
-                )
-                curr_x_static = x_static
+            # Calculate loss against next timestep's values
+            loss = criterion(preds, labels)
 
-                # Get next timestep's ground truth
-                next_sir = x_sir[:, t + 1, :] if seq_length > 1 else labels
-
-                # Make prediction for next timestep
-                preds = model(curr_x_sir, curr_x_interventions, curr_x_static)
-
-                # Calculate loss against next timestep's values
-                step_loss = criterion(preds, next_sir)
-
-                # Accumulate loss for this timestep
-                batch_loss = batch_loss + step_loss
-
-            # Backpropagate the accumulated loss
-            # if seq_length > 1:
-            #     batch_loss = batch_loss / float(
-            #         seq_length - 1
-            #     )  # Ensure we keep tensor type
-            batch_loss.backward()
+            loss.backward()
             optimizer.step()
 
-            running_train_loss += batch_loss.item()
-            train_pbar.set_postfix({"loss": f"{batch_loss.item():.4f}"})
+            running_train_loss += loss.item()
+            train_pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
         avg_train_loss = running_train_loss / len(train_loader)
         model.eval()
@@ -166,33 +142,11 @@ def train_model(model, train_loader, val_loader, num_epochs):
                 x_interventions = x_interventions.to(device)
                 x_static = x_static.to(device)
 
-                # Same autoregressive approach for validation
-                batch_size = x_sir.shape[0]
-                seq_length = x_sir.shape[1] if x_sir.dim() == 3 else 1
+                preds = model(x_sir, x_interventions, x_static)
+                loss = criterion(preds, labels)
 
-                batch_loss = torch.tensor(0.0, device=device, requires_grad=True)
-
-                for t in range(seq_length - 1):
-                    curr_x_sir = x_sir[:, t : t + 1, :] if seq_length > 1 else x_sir
-                    curr_x_interventions = (
-                        x_interventions[:, t : t + 1, :]
-                        if seq_length > 1
-                        else x_interventions
-                    )
-                    curr_x_static = x_static
-
-                    next_sir = x_sir[:, t + 1, :] if seq_length > 1 else labels
-
-                    preds = model(curr_x_sir, curr_x_interventions, curr_x_static)
-                    step_loss = criterion(preds, next_sir)
-                    batch_loss = batch_loss + step_loss
-
-                # if seq_length > 1:
-                #     batch_loss = batch_loss / float(
-                #         seq_length - 1
-                #     )  # Ensure we keep tensor type
-                running_val_loss += batch_loss.item()
-                val_pbar.set_postfix({"loss": f"{batch_loss.item():.4f}"})
+                running_val_loss += loss.item()
+                val_pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
         avg_val_loss = running_val_loss / len(val_loader)
         scheduler.step(avg_val_loss)

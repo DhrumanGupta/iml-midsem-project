@@ -756,7 +756,9 @@ def main(model_name):
     if len(sys.argv) > 2 and sys.argv[2] == "--grid-search":
         return grid_search_model(model_name)
 
-    model_instance = model.Model(input_size=FEATURE_SIZE, is_deltas=IS_DELTAS)
+    model_instance = model.Model(
+        input_size=FEATURE_SIZE, is_deltas=IS_DELTAS, context_length=150
+    )
 
     if not os.path.exists(f"models/{model_name}/checkpoints"):
         os.makedirs(f"models/{model_name}/checkpoints")
