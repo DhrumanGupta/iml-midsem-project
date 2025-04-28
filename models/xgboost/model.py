@@ -61,7 +61,7 @@ class Model:
         self.is_fitted = False
 
 
-def train_model(model, train_data, val_data, num_epochs, loss_fn):
+def train_model(model, train_data, val_data, num_epochs):
     # Get features and labels from DataFrames
     X_train = np.concatenate(
         [

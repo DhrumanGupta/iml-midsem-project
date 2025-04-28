@@ -70,6 +70,7 @@ Agent-based simulations are widely used in epidemiology to understand the spread
 Let $\mathbf{s}_t = (S^a_t, I^a_t, R^a_t, S^s_t, I^s_t, R^s_t)$ denote the state at time $t$, where $S^i_t$, $I^i_t$, and $R^i_t$ represent the number of susceptible, infected, and recovered individuals, in class $i$, which represents adults ($a$) and students ($s$). The interventions (and other parameter inputs) at time $t$ are denoted by $\mathbf{u}_t$. Our two proposed formulations are:
 \begin{enumerate}[label=(\alph*)]
     \item \textbf{Direct Prediction:} Learn a function 
+    \\
     \[
     f: (\mathbf{s}_t, \mathbf{u}_t) \rightarrow \mathbf{s}_{t+1}.
     \]
@@ -114,6 +115,16 @@ The FFN was designed to map the input $(\mathbf{s}_t, \mathbf{u}_t)$ directly to
 
 \newpage
 
+\subsection{Long Short-Term Memory (LSTM)}
+We implemented an LSTM model as an autoregressive approach, feeding sequences of past SIR states and interventions to predict the next state. Despite its ability to capture temporal dependencies, the LSTM model performed very poorly, producing unstable and inaccurate predictions for the SIR dynamics.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/lstm.png}
+    \caption{LSTM model predictions for the SIR dynamics}
+    \label{fig:lstm}
+\end{figure}
+
 \subsection{XGBoost}
 XGBoost, a gradient boosting framework, was applied in two different setups. Empirically, the delta prediction approach proved more effective. The model was able to give good predictions for the SIR trajectories for unseen input parameters.
 
@@ -145,7 +156,5 @@ In this project, we demonstrated that machine learning models can effectively le
     \item Use models that will give a distribution of $s_{t+1}$ instead of a single value, allowing us to capture the distributions of the SIR dynamics.
     \item Extending the approach to more complex epidemiological models and additional intervention strategies.
 \end{itemize}
-
-
 
 \end{document}

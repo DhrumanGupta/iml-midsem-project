@@ -11,7 +11,7 @@ import importlib
 TRAIN_MODEL = True
 IS_DELTAS = False
 MODEL_TO_LOAD = "grid_search_checkpoints/model_grid_search_rank_1.pth"
-MODEL_TO_LOAD = "checkpoints/model_2.pth"
+# MODEL_TO_LOAD = "checkpoints/best_model_grid_search.pth"
 EPOCHS = 5
 BATCH_SIZE = 256
 
@@ -757,7 +757,7 @@ def main(model_name):
         return grid_search_model(model_name)
 
     model_instance = model.Model(
-        input_size=FEATURE_SIZE, is_deltas=IS_DELTAS, context_length=150
+        input_size=FEATURE_SIZE, is_deltas=IS_DELTAS
     )
 
     if not os.path.exists(f"models/{model_name}/checkpoints"):
