@@ -12,8 +12,8 @@ TRAIN_MODEL = True
 IS_DELTAS = False
 MODEL_TO_LOAD = "grid_search_checkpoints/model_grid_search_rank_1.pth"
 # MODEL_TO_LOAD = "checkpoints/best_model_grid_search.pth"
-EPOCHS = 5
-BATCH_SIZE = 256
+EPOCHS = 10
+BATCH_SIZE = 64
 
 PLOT_TEST = True
 PLOT_FOR_ALL = False
