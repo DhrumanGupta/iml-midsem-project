@@ -238,7 +238,7 @@ class Model(nn.Module):
         self.condition_dim = input_size # The condition is the full input vector
 
         default_config = {
-            "timesteps": 100,
+            "timesteps": 500,
             "lr": 0.001,
             # Denoising Network specific config
             "model_dim": 64,

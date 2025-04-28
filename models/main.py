@@ -12,8 +12,8 @@ TRAIN_MODEL = True
 IS_DELTAS = False
 MODEL_TO_LOAD = "grid_search_checkpoints/model_grid_search_rank_1.pth"
 # MODEL_TO_LOAD = "checkpoints/best_model_grid_search.pth"
-EPOCHS = 10
-BATCH_SIZE = 64
+EPOCHS = 50
+BATCH_SIZE = 1024
 
 PLOT_TEST = True
 PLOT_FOR_ALL = False
@@ -341,9 +341,7 @@ def plot_for_model(model, model_instance):
             idx += 1
 
         plt.savefig(f"{directory}/plot_{idx}_{type}.png")
-
-        plt.cla()
-        plt.clf()
+        plt.close()
 
         agg_pred_sus = sir_array[:, 0] * x_static[0] + sir_array[:, 3] * x_static[1]
         agg_pred_inf = sir_array[:, 1] * x_static[0] + sir_array[:, 4] * x_static[1]
@@ -419,6 +417,7 @@ def plot_for_model(model, model_instance):
 
         save_path = os.path.join(directory, f"plot_{idx}_{type}.png")
         plt.savefig(save_path)
+        plt.close()
         print(f"Aggregate plot saved to {save_path}")
 
         plt.cla()
@@ -661,12 +660,14 @@ def grid_search_model(model_name):
         print(f"Model {model_name} does not support grid search")
         sys.exit(1)
 
+
     # Load data for training and validation
     data = load_data(
         batch_size=BATCH_SIZE,
         pytorch=model.IS_PYTORCH,
         is_deltas=IS_DELTAS,
         sequence_length=150 if model.AUTOREGRESSIVE else 1,
+        is_large=(model_name == "diffusion")
     )
 
     # Handle different return types from load_data based on pytorch flag
@@ -762,7 +763,7 @@ def main(model_name):
 
     if not os.path.exists(f"models/{model_name}/checkpoints"):
         os.makedirs(f"models/{model_name}/checkpoints")
-
+        
     if not TRAIN_MODEL:
         model.load_model(model_instance, f"models/{model_name}/{MODEL_TO_LOAD}")
     else:
@@ -771,6 +772,7 @@ def main(model_name):
             pytorch=model.IS_PYTORCH,
             is_deltas=IS_DELTAS,
             sequence_length=150 if model.AUTOREGRESSIVE else 1,
+            is_large=(model_name == "diffusion")
         )
         for avg_train_loss, avg_val_loss, epoch in model.train_model(
             model_instance, train_loader, val_loader, EPOCHS
@@ -782,6 +784,9 @@ def main(model_name):
             model.save_model(
                 model_instance, f"models/{model_name}/checkpoints/model_{epoch+1}.pth"
             )
+
+            if epoch % 2 == 0:
+                plot_for_model(model, model_instance)
 
     if PLOT_TEST:
         plot_for_model(model, model_instance)
